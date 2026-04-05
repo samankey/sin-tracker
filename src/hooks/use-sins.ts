@@ -30,7 +30,7 @@ export function useSins() {
 		try {
 			await createSin(newRecord);
 			await refresh();
-		} catch (err) {
+		} catch (_err) {
 			setList(previousList);
 			alert("기록에 실패했습니다. 하늘이 당신을 굽어살피나 봅니다.");
 		} finally {
@@ -57,7 +57,7 @@ export function useSins() {
 		try {
 			await deleteSin(id);
 			await refresh();
-		} catch (err) {
+		} catch (_err) {
 			setList(previousList);
 			alert("과거 세탁에 실패했습니다. 증거가 아직 남아있네요...");
 		} finally {
