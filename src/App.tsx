@@ -1,8 +1,17 @@
+import { ErrorBoundary } from "./components/error-boundary";
 import { getRandomMessage, SIN_MESSAGES } from "./constants/messages";
 import { useSins } from "./hooks/use-sins";
 
 export default function App() {
-	const { list, isLoading, addSin, modifySin, removeSin } = useSins();
+	return (
+		<ErrorBoundary>
+			<SinTrackerContent />
+		</ErrorBoundary>
+	);
+}
+
+function SinTrackerContent() {
+	const { list, isLoading, error, addSin, modifySin, removeSin } = useSins();
 	const handleAdd = async () => {
 		await addSin({
 			date: new Date().toISOString().split("T")[0],
@@ -18,7 +27,7 @@ export default function App() {
 			await modifySin(id, {
 				date: new Date().toISOString().split("T")[0],
 				score: 50,
-				confession: "KFC 대신 샐러드 먹을걸... (수정됨)",
+				confession: "KFC 대신 샐러드 먹을걸...",
 			});
 			alert(getRandomMessage(SIN_MESSAGES.UPDATE_SUCCESS));
 		}
@@ -43,7 +52,12 @@ export default function App() {
 			>
 				{isLoading ? "죄 짓는 중..." : "죄 짓기"}
 			</button>
-			{isLoading && <p>데이터를 불러오는 중입니다...</p>}
+			{error && (
+				<div className="mb-6 p-4 bg-red-50 border border-red-100 text-red-600 rounded-2xl text-sm flex items-center gap-2">
+					<span>⚠️</span>
+					{error.message}
+				</div>
+			)}
 			<h2 className="text-xl font-semibold mb-2">죄 목록</h2>
 			{isLoading && <p>데이터를 불러오는 중입니다...</p>}
 
