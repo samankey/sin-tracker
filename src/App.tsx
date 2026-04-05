@@ -1,3 +1,4 @@
+import { getRandomMessage, SIN_MESSAGES } from "./constants/messages";
 import { useSins } from "./hooks/use-sins";
 
 export default function App() {
@@ -8,24 +9,26 @@ export default function App() {
 			score: 6,
 			confession: "9시에 KFC 시킴",
 		});
-		alert("죄를 지었습니다 🍗");
+		alert(getRandomMessage(SIN_MESSAGES.CREATE));
 	};
 
 	const handleUpdate = async (id: number) => {
-		if (confirm("이 기록을 수정하시겠습니까?")) {
+		const confirmMsg = getRandomMessage(SIN_MESSAGES.UPDATE_CONFIRM);
+		if (confirm(confirmMsg)) {
 			await modifySin(id, {
 				date: new Date().toISOString().split("T")[0],
 				score: 50,
 				confession: "KFC 대신 샐러드 먹을걸... (수정됨)",
 			});
-			alert("참회가 반영되었습니다. ✨");
+			alert(getRandomMessage(SIN_MESSAGES.UPDATE_SUCCESS));
 		}
 	};
 
 	const handleDelete = async (id: number) => {
-		if (confirm("이 죄를 정말로 씻어내시겠습니까?")) {
+		const confirmMsg = getRandomMessage(SIN_MESSAGES.DELETE_CONFIRM);
+		if (confirm(confirmMsg)) {
 			await removeSin(id);
-			alert("당신의 참회가 수용되었습니다. 🕊️");
+			alert(getRandomMessage(SIN_MESSAGES.DELETE_SUCCESS));
 		}
 	};
 
