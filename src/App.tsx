@@ -1,29 +1,33 @@
-import { useCallback, useEffect, useState } from "react";
-import { createSin, getSins } from "./api/issue-service";
-import type { SinRecord } from "./types";
+import { useSins } from "./hooks/use-sins";
 
 export default function App() {
-	const [list, setList] = useState<SinRecord[]>([]);
-
-	const loadData = useCallback(async () => {
-		const data = await getSins();
-		setList(data);
-	}, []);
-
+	const { list, isLoading, addSin, modifySin, removeSin } = useSins();
 	const handleAdd = async () => {
-		const newSin = {
+		await addSin({
 			date: new Date().toISOString().split("T")[0],
 			score: 6,
 			confession: "9시에 KFC 시킴",
-		};
-		await createSin(newSin);
-		alert("죄를 지었습니다");
-		loadData();
+		});
+		alert("죄를 지었습니다 🍗");
 	};
 
-	useEffect(() => {
-		loadData();
-	}, [loadData]);
+	const handleUpdate = async (id: number) => {
+		if (confirm("이 기록을 수정하시겠습니까?")) {
+			await modifySin(id, {
+				date: new Date().toISOString().split("T")[0],
+				score: 50,
+				confession: "KFC 대신 샐러드 먹을걸... (수정됨)",
+			});
+			alert("참회가 반영되었습니다. ✨");
+		}
+	};
+
+	const handleDelete = async (id: number) => {
+		if (confirm("이 죄를 정말로 씻어내시겠습니까?")) {
+			await removeSin(id);
+			alert("당신의 참회가 수용되었습니다. 🕊️");
+		}
+	};
 
 	return (
 		<div className="p-10">
@@ -31,11 +35,51 @@ export default function App() {
 			<button
 				type="button"
 				className="bg-red-500 text-white p-2 m-2"
+				disabled={isLoading}
 				onClick={handleAdd}
 			>
-				내자신 미안해
+				{isLoading ? "죄 짓는 중..." : "죄 짓기"}
 			</button>
-			<pre>{JSON.stringify(list, null, 2)}</pre>
+			{isLoading && <p>데이터를 불러오는 중입니다...</p>}
+			<h2 className="text-xl font-semibold mb-2">죄 목록</h2>
+			{isLoading && <p>데이터를 불러오는 중입니다...</p>}
+
+			<div className="space-y-4">
+				{list.map((sin) => (
+					<div
+						key={sin.id}
+						className="p-4 border rounded-xl bg-gray-50 flex justify-between items-center"
+					>
+						<div className="flex flex-col items-start">
+							<p className="font-mono text-sm">{sin.date}</p>
+							<p className="font-mono text-sm">{sin.confession}</p>
+							<p className="font-mono text-sm">점수: {sin.score}</p>
+						</div>
+						<div className="flex gap-2">
+							<button
+								type="button"
+								className="bg-blue-500 text-white px-3 py-1 rounded text-sm"
+								onClick={() => sin.id && handleUpdate(sin.id)}
+							>
+								수정
+							</button>
+							<button
+								type="button"
+								className="bg-gray-800 text-white px-3 py-1 rounded text-sm"
+								onClick={() => sin.id && handleDelete(sin.id)}
+							>
+								삭제
+							</button>
+						</div>
+					</div>
+				))}
+			</div>
+			<details>
+				<summary className="cursor-pointer text-gray-400">Raw Data</summary>
+				<pre className="bg-gray-100 p-4 mt-2 rounded text-xs">
+					{JSON.stringify(list, null, 2)}
+				</pre>
+			</details>
 		</div>
 	);
 }

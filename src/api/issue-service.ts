@@ -7,7 +7,7 @@ const HEADERS = {
 };
 
 /**
- * 기록 생성
+ * 생성
  */
 export const createSin = async (record: SinRecord) => {
 	const response = await fetch(BASE_URL, {
@@ -15,9 +15,23 @@ export const createSin = async (record: SinRecord) => {
 		headers: HEADERS,
 		body: JSON.stringify({
 			title: `[Sin-Log] ${record.date}`,
-			// 본문에 JSON 데이터를 숨겨서 저장 (나중에 읽기 위해)
 			body: JSON.stringify(record),
-			labels: ["sin-data"], // 데이터 구분을 위한 라벨
+			labels: ["sin-data"],
+		}),
+	});
+	return response.ok;
+};
+
+/**
+ * 수정
+ */
+export const updateSin = async (issueNumber: number, record: SinRecord) => {
+	const response = await fetch(`${BASE_URL}/${issueNumber}`, {
+		method: "PATCH",
+		headers: HEADERS,
+		body: JSON.stringify({
+			title: `[Sin-Log] ${record.date}`,
+			body: JSON.stringify(record),
 		}),
 	});
 	return response.ok;
@@ -27,11 +41,27 @@ export const createSin = async (record: SinRecord) => {
  * 읽기
  */
 export const getSins = async (): Promise<SinRecord[]> => {
-	const response = await fetch(`${BASE_URL}?labels=sin-data&state=all`, {
+	const response = await fetch(`${BASE_URL}?labels=sin-data&state=open`, {
 		headers: HEADERS,
 	});
 	const issues = await response.json();
 
-	// 이슈 본문에 숨겨진 JSON만 추출해서 배열로 만듦
-	return issues.map((issue: any) => JSON.parse(issue.body));
+	return issues.map((issue: any) => ({
+		...JSON.parse(issue.body),
+		id: issue.number,
+	}));
+};
+
+/**
+ * 삭제
+ */
+export const deleteSin = async (issueNumber: number) => {
+	const response = await fetch(`${BASE_URL}/${issueNumber}`, {
+		method: "PATCH",
+		headers: HEADERS,
+		body: JSON.stringify({
+			state: "closed",
+		}),
+	});
+	return response.ok;
 };
