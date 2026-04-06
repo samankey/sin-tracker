@@ -24,5 +24,5 @@ export interface Issue {
 }
 
 export interface SinRecord extends SinData {
-  id: number;
+  id?: number;
 }

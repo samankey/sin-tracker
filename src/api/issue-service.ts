@@ -1,5 +1,5 @@
 import type { Issue, SinRecord } from "../types";
-import { apiRequest } from "./github-client";
+import { apiRequest } from "./api-client";
 
 /**
  * 생성
