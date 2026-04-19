@@ -1,53 +1,43 @@
-import type { Issue, SinRecord } from "../types";
-import { apiRequest } from "./api-client";
+import axios from "axios";
+import type { PostRecord } from "../types";
+
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
 /**
- * 생성
+ * 익명 게시글 생성
  */
-export const createSin = async (record: SinRecord) => {
-  return apiRequest("", {
-    method: "POST",
-    body: JSON.stringify({
-      title: `[Sin-Log] ${record.date}`,
-      body: JSON.stringify(record),
-      labels: ["sin-data"],
-    }),
+export const createPost = async (post: PostRecord) => {
+  const response = await axios.post(`${API_BASE_URL}/post_issue`, {
+    title: post.title,
+    content: post.content,
+    password: post.password,
   });
+  return response.data;
 };
 
 /**
- * 수정
+ * 게시글 목록 읽기
  */
-export const updateSin = async (issueNumber: number, record: SinRecord) => {
-  return apiRequest(String(issueNumber), {
-    method: "PATCH",
-    body: JSON.stringify({
-      title: `[Sin-Log] ${record.date}`,
-      body: JSON.stringify(record),
-    }),
-  });
-};
+export const getPosts = async (): Promise<PostRecord[]> => {
+  // Request the backend server which returns simplified post objects
+  const response = await axios.get(`${API_BASE_URL}/posts`);
 
-/**
- * 읽기
- */
-export const getSins = async (): Promise<SinRecord[]> => {
-  const issues = await apiRequest("?labels=sin-data&state=open");
-
-  return issues.map((issue: Issue) => ({
-    ...JSON.parse(issue.body),
-    id: issue.number,
+  return response.data.map((issue: any) => ({
+    id: issue.id,
+    title: issue.title,
+    content: issue.content,
   }));
 };
 
 /**
- * 삭제
+ * 게시글 삭제 (은폐)
  */
-export const deleteSin = async (issueNumber: number) => {
-  return apiRequest(String(issueNumber), {
-    method: "PATCH",
-    body: JSON.stringify({
-      state: "closed",
-    }),
+export const deletePost = async (issueNumber: number) => {
+  // 이 부분도 나중에 서버를 통해 비밀번호 검증 후 삭제하도록 바꿀 예정입니다.
+  const res = await axios.patch(`${API_BASE_URL}/update_issue/${issueNumber}`, {
+    state: "closed",
   });
+
+  return res.data;
 };

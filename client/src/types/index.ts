@@ -26,3 +26,11 @@ export interface Issue {
 export interface SinRecord extends SinData {
   id?: number;
 }
+
+export interface PostRecord {
+  id?: number;
+  title: string;
+  content: string;
+  password?: string; // 작성할 때만 사용
+  anonymous_id?: string; // 서버에서 받아올 식별값
+}

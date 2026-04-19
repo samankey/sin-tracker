@@ -1,4 +1,5 @@
-const BASE_URL = `https://api.github.com/repos/${import.meta.env.VITE_REPO_OWNER}/${import.meta.env.VITE_REPO_NAME}/issues`;
+// Prefer a dedicated backend server; fall back to localhost if not provided.
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
 function buildHeaders(extra: Record<string, string> = {}) {
   const token = import.meta.env.VITE_GITHUB_TOKEN;
