@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List
@@ -51,15 +51,37 @@ class UpdateIssueRequest(BaseModel):
     body: Optional[str] = None
     state: Optional[str] = None
 
+SECRET_SALT = os.getenv("SECRET_SALT", "default_salt")
+
+def get_ip_hash(request: Request) -> str:
+    """
+    유저의 IP를 가져와 솔트와 함께 해싱하여 익명 ID를 생성합니다.
+    """
+    client_ip = request.client.host
+    raw_string = f"{client_ip}{SECRET_SALT}"
+    return hashlib.sha256(raw_string.encode()).hexdigest()[:12]
+
 @app.get("/")
 def read_root():
     return {"message": "Welcome to the Anonymous Wood Server"}
 
 @app.post("/post_issue")
-async def create_issue(issue: PostIssueRequest):
-    anonymous_id = hashlib.sha256(issue.password.encode()).hexdigest()[:8]
-    
-    formatted_body = f"### 👤 익명_{anonymous_id}님의 제보\n\n---\n\n{issue.content}"
+async def create_issue(issue: PostIssueRequest, request: Request):
+    # IP 기반 익명 ID 생성
+    ip_id = get_ip_hash(request)
+    # 기존 비밀번호 기반 ID 생성
+    pwd_id = hashlib.sha256(issue.password.encode()).hexdigest()[:8]
+
+    # 본문 구성
+    # 유저는 본인의 비밀번호 ID로 식별하고, 시스템은 IP ID로 도배를 관리합니다.
+    formatted_body = (
+        f"### 👤 작성자: 익명_{pwd_id}\n\n"
+        f"{issue.content}\n\n"
+        f"---\n"
+        f"> **System Trace**\n"
+        f"> IP_HASH: {ip_id}\n"
+        f"> PWD_HASH: {pwd_id}"
+    )
 
     async with httpx.AsyncClient() as client:
         response = await client.post(
