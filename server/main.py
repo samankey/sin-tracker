@@ -1,14 +1,29 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import Optional, List
-import httpx
+from sqlmodel import Session
+from database import init_db, get_session
+from models import PostMetadata
 import os
-from dotenv import load_dotenv
 import hashlib
+from contextlib import asynccontextmanager
 
-load_dotenv()
-app = FastAPI()
+from .config import SECRET_SALT
+from .schemas import PostIssueRequest, UpdateIssueRequest
+from .github_client import create_github_issue, list_github_issues, update_github_issue
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # [1] Startup: 서버가 켜질 때 실행될 로직
+    print("🚀 비밀 세탁소 서버가 가동됩니다. DB를 초기화합니다.")
+    init_db()
+    
+    yield  # 서버가 실행되는 동안 여기서 대기합니다.
+
+    # [2] Shutdown: 서버가 꺼질 때 실행될 로직 (필요 시)
+    print("💤 서버를 안전하게 종료합니다. 리소스를 정리합니다.")
+
+# lifespan을 FastAPI 인스턴스 생성 시 등록합니다.
+app = FastAPI(lifespan=lifespan)
 
 # CORS 설정
 app.add_middleware(
@@ -20,36 +35,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
-REPO_OWNER = os.getenv("REPO_OWNER")
-REPO_NAME = os.getenv("REPO_NAME")
-GITHUB_API_URL = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/issues"
-
-# Fail fast when required env vars are missing to avoid confusing 401 responses from GitHub.
-missing = [
-    name for name, val in (
-        ("GITHUB_TOKEN", GITHUB_TOKEN),
-        ("REPO_OWNER", REPO_OWNER),
-        ("REPO_NAME", REPO_NAME),
-    )
-    if not val
-]
-if missing:
-    raise RuntimeError(
-        "Missing required environment variables: " + ", ".join(missing) + 
-        ". Please set them (e.g. in server/.env) before starting the server."
-    )
-
-class PostIssueRequest(BaseModel):
-    title: str
-    content: str
-    password: str
-
-
-class UpdateIssueRequest(BaseModel):
-    title: Optional[str] = None
-    body: Optional[str] = None
-    state: Optional[str] = None
+# Request/response schemas and GitHub client are in separate modules for clarity
 
 SECRET_SALT = os.getenv("SECRET_SALT", "default_salt")
 
@@ -66,7 +52,7 @@ def read_root():
     return {"message": "Welcome to the Anonymous Wood Server"}
 
 @app.post("/post_issue")
-async def create_issue(issue: PostIssueRequest, request: Request):
+async def create_issue(issue: PostIssueRequest, request: Request, db: Session = Depends(get_session)):
     # IP 기반 익명 ID 생성
     ip_id = get_ip_hash(request)
     # 기존 비밀번호 기반 ID 생성
@@ -83,47 +69,36 @@ async def create_issue(issue: PostIssueRequest, request: Request):
         f"> PWD_HASH: {pwd_id}"
     )
 
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            GITHUB_API_URL,
-            headers={
-                "Authorization": f"token {GITHUB_TOKEN}",
-                "Accept": "application/vnd.github.v3+json",
-            },
-            json={
-                "title": issue.title,
-                "body": formatted_body,
-                "labels": ["anonymous-post"]
-            }
+    response = await create_github_issue(issue.title, formatted_body, labels=["anonymous-post"])
+    if response.status_code == 201:
+        issue_data = response.json()
+        # [5] DB에 메타데이터 저장 (3단계 핵심)
+        new_meta = PostMetadata(
+            issue_number=issue_data["number"],
+            ip_hash=ip_id,
+            pwd_hash=pwd_id,
         )
-        
-        if response.status_code == 201:
-            return {"message": "익명 장부에 기록되었습니다.", "anonymous_id": anonymous_id}
-        else:
-            raise HTTPException(status_code=response.status_code, detail="기록에 실패했습니다.")
+        db.add(new_meta)
+        db.commit()
+
+        # pwd_id로 변수명 수정
+        return {"message": "익명 장부에 기록되었습니다.", "anonymous_id": pwd_id}
+    else:
+        raise HTTPException(status_code=response.status_code, detail="기록 실패")
 
 
 @app.get("/posts")
 async def list_posts():
     # Returns issues labeled `anonymous-post` and state=open
-    async with httpx.AsyncClient() as client:
-        response = await client.get(
-            f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/issues",
-            params={"labels": "anonymous-post", "state": "open"},
-            headers={
-                "Authorization": f"token {GITHUB_TOKEN}",
-                "Accept": "application/vnd.github.v3+json",
-            },
-        )
+    try:
+        issues = await list_github_issues()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
 
-        if response.status_code != 200:
-            raise HTTPException(status_code=response.status_code, detail="조회에 실패했습니다.")
-
-        issues = response.json()
-        # Map to a simplified PostRecord shape
-        return [
-            {"id": i.get("number"), "title": i.get("title"), "content": i.get("body")} for i in issues
-        ]
+    # Map to a simplified PostRecord shape
+    return [
+        {"id": i.get("number"), "title": i.get("title"), "content": i.get("body")} for i in issues
+    ]
 
 
 @app.patch("/update_issue/{issue_number}")
@@ -140,17 +115,9 @@ async def update_issue(issue_number: int, update: UpdateIssueRequest):
     if not payload:
         raise HTTPException(status_code=400, detail="업데이트할 필드가 없습니다.")
 
-    async with httpx.AsyncClient() as client:
-        response = await client.patch(
-            f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/issues/{issue_number}",
-            headers={
-                "Authorization": f"token {GITHUB_TOKEN}",
-                "Accept": "application/vnd.github.v3+json",
-            },
-            json=payload,
-        )
+    response = await update_github_issue(issue_number, payload)
 
-        if response.status_code in (200, 201):
-            return {"message": "업데이트 성공"}
-        else:
-            raise HTTPException(status_code=response.status_code, detail="업데이트에 실패했습니다.")
+    if response.status_code in (200, 201):
+        return {"message": "업데이트 성공"}
+    else:
+        raise HTTPException(status_code=response.status_code, detail="업데이트에 실패했습니다.")
