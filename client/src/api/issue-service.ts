@@ -33,10 +33,9 @@ export const getPosts = async (): Promise<PostRecord[]> => {
 /**
  * 게시글 삭제 (은폐)
  */
-export const deletePost = async (issueNumber: number) => {
-  // 이 부분도 나중에 서버를 통해 비밀번호 검증 후 삭제하도록 바꿀 예정입니다.
-  const res = await axios.patch(`${API_BASE_URL}/update_issue/${issueNumber}`, {
-    state: "closed",
+export const deletePost = async (issueNumber: number, password: string) => {
+  const res = await axios.post(`${API_BASE_URL}/delete_issue/${issueNumber}`, {
+    password,
   });
 
   return res.data;

@@ -5,10 +5,43 @@ import { usePosts } from "../hooks/use-sins";
 export function SinTrackerContent() {
   const { list, isLoading, error, addPost, removePost } = usePosts();
 
-  // 1. 입력값 관리를 위한 상태(State)
+  // 입력값
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [password, setPassword] = useState("");
+
+  // 삭제
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [targetId, setTargetId] = useState<number | null>(null);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // 삭제 모달 열기
+  const openDeleteModal = (id: number) => {
+    setTargetId(id);
+    setIsModalOpen(true);
+  };
+
+  // 실제 삭제 요청 실행
+  const handleConfirmDelete = async (password: string) => {
+    if (!targetId || !password) return;
+
+    setIsDeleting(true);
+    try {
+      await removePost(targetId, password);
+      alert(getRandomMessage(SIN_MESSAGES.DELETE_SUCCESS));
+      setIsModalOpen(false);
+      setDeletePassword("");
+    } catch (err: any) {
+      // 서버에서 403(비밀번호 불일치) 등이 올 경우 처리
+      alert(
+        err.response?.data?.detail ||
+          "은폐에 실패했습니다. 비밀번호를 확인하세요.",
+      );
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const handlePost = async () => {
     if (!title || !content || !password) {
@@ -16,116 +49,157 @@ export function SinTrackerContent() {
       return;
     }
 
-    // 2. usePosts 훅을 통해 서버로 데이터 전송
-    // (usePosts 내부의 addPost가 이제 FastAPI 서버를 바라보게 수정해야 합니다)
-    await addPost({
-      title,
-      content,
-      password,
-    });
+    try {
+      await addPost({
+        title,
+        content,
+        password,
+      });
 
-    alert(getRandomMessage(SIN_MESSAGES.CREATE));
+      alert(getRandomMessage(SIN_MESSAGES.CREATE));
 
-    // 3. 입력창 초기화
-    setTitle("");
-    setContent("");
-    setPassword("");
-  };
-
-  const handleDelete = async (id: number) => {
-    const confirmMsg = getRandomMessage(SIN_MESSAGES.DELETE_CONFIRM);
-    if (confirm(confirmMsg)) {
-      await removePost(id); // 삭제 시에도 나중에는 비밀번호 검증이 필요하겠네요!
-      alert(getRandomMessage(SIN_MESSAGES.DELETE_SUCCESS));
+      setTitle("");
+      setContent("");
+      setPassword("");
+    } catch (err) {
+      alert("대나무숲에 외치기가 실패했습니다. 🍃");
     }
   };
 
+  const handleDelete = async (id: number) => {
+    openDeleteModal(id);
+  };
+
   return (
-    <div className="p-10 max-w-2xl mx-auto">
-      <header className="mb-10 text-center">
-        <h1 className="text-4xl font-bold mb-2">🎭 Anonymous Wood</h1>
-        <p className="text-gray-500">
-          누구에게도 말 못한 회사 이야기, 여기서 털어놓으세요.
-        </p>
+    <div className="min-h-screen bg-[#121212] text-white font-sans pb-32">
+      {/* Header - TopAppBar Shell */}
+      <header className="sticky top-0 z-50 flex items-center justify-between px-6 py-4 bg-black/80 backdrop-blur-xl border-b border-white/10 mb-12">
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl font-bold tracking-wider text-[#a3e635]">
+            ANONYMOUS WOOD
+          </h1>
+        </div>
       </header>
 
-      {/* 글쓰기 영역 */}
-      <div className="flex flex-col gap-4 bg-white p-6 rounded-3xl shadow-lg border border-gray-100 mb-10">
-        <input
-          className="p-4 border-none bg-gray-50 rounded-2xl outline-none focus:ring-2 focus:ring-green-400 transition-all"
-          placeholder="어떤 주제인가요?"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
-        <textarea
-          className="p-4 border-none bg-gray-50 rounded-2xl h-32 outline-none focus:ring-2 focus:ring-green-400 transition-all resize-none"
-          placeholder="임금님 귀는 당나귀 귀! 자유롭게 적어주세요."
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-        />
-        <div className="flex gap-2">
+      <div className="max-w-3xl mx-auto px-6 flex flex-col gap-16">
+        {/* Whisper Input: Post Creation Section */}
+        <div className="bg-[#1b1b1b] rounded-[32px] border border-white/5 p-8 flex flex-col gap-6 shadow-2xl">
           <input
-            type="password"
-            className="flex-1 p-4 border-none bg-gray-50 rounded-2xl outline-none focus:ring-2 focus:ring-green-400 transition-all"
-            placeholder="비밀번호 (수정/삭제용)"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            className="w-full bg-black border border-white/10 rounded-full px-6 py-4 text-white placeholder-[#c6c6c7] focus:outline-none focus:border-[#39ff14]/50 transition-all text-base"
+            placeholder="제목"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
           />
-          <button
-            type="button"
-            className="bg-green-500 text-white px-8 py-4 rounded-2xl font-bold hover:bg-green-600 active:scale-95 disabled:bg-gray-300 transition-all"
-            disabled={isLoading}
-            onClick={handlePost}
-          >
-            {isLoading ? "외치는 중..." : "숲에 외치기"}
-          </button>
-        </div>
-      </div>
-
-      {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-100 text-red-600 rounded-2xl text-sm flex items-center gap-2">
-          <span>⚠️</span> {error.message}
-        </div>
-      )}
-
-      <h2 className="text-2xl font-bold mb-6 text-gray-800">
-        최근 들려온 소식 🍃
-      </h2>
-
-      <div className="space-y-4">
-        {list.length === 0 && !isLoading && (
-          <p className="text-center py-20 text-gray-400 font-medium">
-            아직 숲이 고요합니다. 첫 번째 외침을 남겨보세요!
-          </p>
-        )}
-
-        {list.map((post) => (
-          <div
-            key={post.id}
-            className="p-6 border-none rounded-3xl bg-white shadow-sm flex justify-between items-start hover:shadow-md transition-all border border-gray-50"
-          >
-            <div className="flex flex-col items-start gap-2">
-              <h3 className="font-bold text-lg text-gray-800">{post.title}</h3>
-              <p className="text-gray-600 leading-relaxed whitespace-pre-wrap">
-                {post.content}
-              </p>
-              <div className="mt-2 flex gap-2">
-                <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-1 rounded-full font-mono">
-                  #{post.id}
-                </span>
-                {/* 서버에서 보내주는 익명 ID가 있다면 여기에 표시 */}
-              </div>
-            </div>
+          <textarea
+            className="w-full h-40 bg-transparent border border-white/5 rounded-[32px] px-6 py-6 text-white placeholder-[#c6c6c7] focus:outline-none focus:border-[#39ff14]/50 transition-all resize-none text-base"
+            placeholder="내용을 입력하세요"
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+          />
+          <div className="flex gap-4 items-center">
+            <input
+              type="password"
+              className="flex-1 bg-black border border-white/10 rounded-full px-6 py-4 text-white placeholder-[#c6c6c7] focus:outline-none focus:border-[#39ff14]/50 transition-all text-base"
+              placeholder="삭제 비밀번호"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
             <button
               type="button"
-              className="text-gray-300 hover:text-red-400 p-2 transition-colors"
-              onClick={() => post.id && handleDelete(post.id)}
+              className="bg-[#39ff14] text-black px-10 py-4 rounded-full font-bold hover:bg-[#32e011] active:scale-95 disabled:bg-[#39ff14]/30 disabled:text-gray-500 transition-all whitespace-nowrap text-base"
+              disabled={isLoading}
+              onClick={handlePost}
             >
-              은폐
+              {isLoading ? "게시 중..." : "게시하기"}
             </button>
           </div>
-        ))}
+        </div>
+
+        {error && (
+          <div className="p-5 bg-red-900/20 border border-red-500/30 text-red-400 rounded-3xl text-sm flex items-center gap-3">
+            <span>⚠️</span> {error.message}
+          </div>
+        )}
+
+        {/* Feed Section */}
+        <div className="flex flex-col gap-8">
+          {list.length === 0 && !isLoading && (
+            <p className="text-center py-20 text-[#c6c6c7] font-medium">
+              아직 숲이 고요합니다. 첫 번째 외침을 남겨보세요!
+            </p>
+          )}
+
+          {list.map((post) => (
+            <div
+              key={post.id}
+              className="bg-[#1f1f1f] rounded-[48px] border border-white/5 p-8 flex flex-col gap-6 transition-all hover:border-white/10 shadow-lg"
+            >
+              <div className="flex flex-col gap-4">
+                <h3 className="text-lg text-[#e2e2e2] font-medium">
+                  {post.title}
+                </h3>
+                <p className="text-[#badab0] leading-relaxed whitespace-pre-wrap text-base">
+                  {post.content}
+                </p>
+              </div>
+
+              {/* Horizontal Border & Metadata */}
+              <div className="border-t border-white/10 pt-4 flex justify-between items-center">
+                <div className="flex items-center gap-4">
+                  <span className="bg-black/40 border border-white/5 text-[#c6c6c7] px-3 py-1.5 rounded-full text-xs font-mono">
+                    ID: 익명_{post.id}
+                  </span>
+                  <span className="text-[#c6c6c7] text-xs font-medium">
+                    익명 게시글
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="text-gray-500 hover:text-red-400 px-2 py-1 transition-colors text-sm font-bold tracking-wide"
+                  onClick={() => post.id && handleDelete(post.id)}
+                >
+                  은폐
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
+      {isModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-6">
+          <div className="bg-[#1b1b1b] w-full max-w-md rounded-[32px] p-8 border border-[#39ff14]/20 shadow-[0_0_50px_rgba(57,255,20,0.1)]">
+            <h2 className="text-2xl font-bold mb-2">정말 은폐할까요?</h2>
+            <p className="text-gray-400 mb-6 text-sm">
+              작성 시 입력했던 비밀번호를 확인합니다.
+            </p>
+
+            <input
+              type="password"
+              className="w-full bg-black border border-white/10 rounded-full px-6 py-4 text-white focus:outline-none focus:border-[#39ff14] mb-6"
+              placeholder="비밀번호 입력"
+              value={deletePassword}
+              onChange={(e) => setDeletePassword(e.target.value)}
+              autoFocus
+            />
+
+            <div className="flex gap-3">
+              <button
+                className="flex-1 bg-white/5 hover:bg-white/10 text-white py-4 rounded-full font-bold transition-all"
+                onClick={() => setIsModalOpen(false)}
+              >
+                취소
+              </button>
+              <button
+                className="flex-1 bg-[#39ff14] text-black py-4 rounded-full font-bold hover:bg-[#32e011] transition-all disabled:opacity-50"
+                onClick={() => handleConfirmDelete(deletePassword)}
+                disabled={isDeleting}
+              >
+                {isDeleting ? "처리 중..." : "확인"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

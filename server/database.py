@@ -1,13 +1,17 @@
+# server/database.py
 import os
 from sqlmodel import create_engine, SQLModel, Session
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# 로컬 PostgreSQL 주소 (Docker 사용 시 주소 확인 필요)
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:password@localhost:5432/anonymous_wood")
+# [수정됨] PostgreSQL 대신 서버 폴더 안에 'anonymous_wood.db'라는 파일 형태의 DB를 만듭니다.
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./anonymous_wood.db")
 
-engine = create_engine(DATABASE_URL, echo=True) # echo=True는 쿼리 로그를 남겨줍니다 (학습용)
+# SQLite는 여러 스레드 접근을 허용하기 위해 특별한 설정이 필요합니다.
+connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+
+engine = create_engine(DATABASE_URL, echo=True, connect_args=connect_args)
 
 def init_db():
     SQLModel.metadata.create_all(engine)

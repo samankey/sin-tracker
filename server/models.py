@@ -2,7 +2,6 @@ from sqlmodel import SQLModel, Field
 from datetime import datetime
 from typing import Optional
 
-# [JD 포인트: Database 설계 능력]
 class PostMetadata(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     issue_number: int = Field(index=True)  # GitHub 이슈 번호 (검색 최적화를 위한 인덱스 추가)

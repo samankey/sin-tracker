@@ -26,19 +26,19 @@ export function usePosts() {
       await createPost(newPost);
       await refresh(); // 등록 후 목록 갱신
     } catch (err) {
-      alert("대나무숲에 외치기가 실패했습니다. 🍃");
+      throw err;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const removePost = async (id: number) => {
+  const removePost = async (id: number, password: string) => {
     setIsLoading(true);
     try {
-      await deletePost(id);
+      await deletePost(id, password);
       await refresh();
     } catch (err) {
-      alert("증거 인멸에 실패했습니다.");
+      throw err;
     } finally {
       setIsLoading(false);
     }
