@@ -1,10 +1,10 @@
 import { ErrorBoundary } from "./components/error-boundary";
-import { SinTrackerContent } from "./components/sin-tracker-content";
+import { MainContent } from "./components/main-content";
 
 export default function App() {
   return (
     <ErrorBoundary>
-      <SinTrackerContent />
+      <MainContent />
     </ErrorBoundary>
   );
 }
