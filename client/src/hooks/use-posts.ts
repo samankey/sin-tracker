@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createPost, getPosts, deletePost } from "../api/issue-service";
+import type { PostRecord } from "../types";
 
 export function usePosts() {
   const queryClient = useQueryClient();
@@ -15,7 +16,20 @@ export function usePosts() {
   // 포스팅하기
   const addMutation = useMutation({
     mutationFn: createPost,
-    onSuccess: () => {
+    onMutate: async (newPost: PostRecord) => {
+      await queryClient.cancelQueries({ queryKey: ["posts"] });
+      const previousPosts = queryClient.getQueryData(["posts"]);
+      // 낙관적 업데이트
+      queryClient.setQueryData(["posts"], (old: PostRecord[] = []) => [
+        newPost,
+        ...old,
+      ]);
+      return { previousPosts };
+    },
+    onError: (_err, _newPost, context) => {
+      queryClient.setQueryData(["posts"], context?.previousPosts);
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["posts"] });
     },
   });
@@ -24,7 +38,8 @@ export function usePosts() {
   const removeMutation = useMutation({
     mutationFn: ({ id, password }: { id: number; password: string }) => 
       deletePost(id, password),
-    onSuccess: () => {
+    onSuccess: (_, { id }: { id: number, password: string }) => {
+      queryClient.setQueryData(['posts'], (old: PostRecord[]) => old.filter(post => post.id !==id));
       queryClient.invalidateQueries({ queryKey: ["posts"] });
     },
   });

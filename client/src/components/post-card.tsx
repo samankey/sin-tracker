@@ -16,13 +16,11 @@ export function PostCard({ post, isRemoving, onDelete }: PostCardProps) {
         </p>
       </div>
 
-      {/* Horizontal Border & Metadata */}
       <div className="border-t border-white/10 pt-4 flex justify-between items-center">
         <div className="flex items-center gap-4">
           <span className="bg-black/40 border border-white/5 text-[#c6c6c7] px-3 py-1.5 rounded-full text-xs font-mono">
-            ID: 익명_{post.id}
+            ID: 익명_{post.authorId || post.id}
           </span>
-          <span className="text-[#c6c6c7] text-xs font-medium">익명 게시글</span>
         </div>
         <button
           type="button"

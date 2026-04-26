@@ -6,9 +6,11 @@ from models import PostMetadata
 import os
 import hashlib
 from contextlib import asynccontextmanager
+from datetime import date
 
 from schemas import PostIssueRequest, UpdateIssueRequest, DeleteRequest
-from github_client import create_github_issue, list_github_issues, update_github_issue
+from github_client import GITHUB_API_URL, GITHUB_TOKEN, create_github_issue, list_github_issues, update_github_issue
+import httpx
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -43,7 +45,8 @@ def get_ip_hash(request: Request) -> str:
     유저의 IP를 가져와 솔트와 함께 해싱하여 익명 ID를 생성합니다.
     """
     client_ip = request.client.host
-    raw_string = f"{client_ip}{SECRET_SALT}"
+    today = date.today().isoformat()
+    raw_string = f"{client_ip}{SECRET_SALT}{today}"
     return hashlib.sha256(raw_string.encode()).hexdigest()[:12]
 
 @app.get("/")
@@ -60,12 +63,11 @@ async def create_issue(issue: PostIssueRequest, request: Request, db: Session = 
     # 본문 구성
     # 유저는 본인의 비밀번호 ID로 식별하고, 시스템은 IP ID로 도배를 관리합니다.
     formatted_body = (
-        f"### 👤 작성자: 익명_{pwd_id}\n\n"
         f"{issue.content}\n\n"
-        f"---\n"
-        f"> **System Trace**\n"
-        f"> IP_HASH: {ip_id}\n"
-        f"> PWD_HASH: {pwd_id}"
+        # f"---\n"
+        # f"> **System Trace**\n"
+        # f"> IP_HASH: {ip_id}\n"
+        # f"> PWD_HASH: {pwd_id}"
     )
 
     response = await create_github_issue(issue.title, formatted_body, labels=["anonymous-post"])
@@ -87,17 +89,57 @@ async def create_issue(issue: PostIssueRequest, request: Request, db: Session = 
 
 
 @app.get("/posts")
-async def list_posts():
-    # Returns issues labeled `anonymous-post` and state=open
+async def list_posts(db: Session = Depends(get_session)):
     try:
+        # 1. GitHub에서 기본 이슈 목록 가져오기 (인덱싱 지연 발생 가능)
         issues = await list_github_issues()
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        issue_dict = {i.get("number"): i for i in issues}
 
-    # Map to a simplified PostRecord shape
-    return [
-        {"id": i.get("number"), "title": i.get("title"), "content": i.get("body")} for i in issues
-    ]
+        # 2. 우리 DB에서 삭제되지 않은 최근 메타데이터 가져오기
+        # (최신 10개 정도만 체크해도 Add Flicker는 충분히 잡습니다)
+        statement = select(PostMetadata).where(PostMetadata.is_deleted == False).order_by(PostMetadata.id.desc()).limit(10)
+        recent_metas = db.exec(statement).all()
+
+        results = []
+        
+        async with httpx.AsyncClient() as client:
+            for meta in recent_metas:
+                num = meta.issue_number
+                
+                # Case A: GitHub 리스트에 이미 있는 경우 -> 그대로 사용
+                if num in issue_dict:
+                    target_issue = issue_dict[num]
+                    results.append({
+                        "id": num,
+                        "title": target_issue.get("title"),
+                        "content": target_issue.get("body"),
+                        "author_id": meta.pwd_hash
+                    })
+                
+                # Case B: DB에는 있는데 GitHub 리스트(Search)에는 없는 경우 (Add Flicker 상황)
+                else:
+                    # 해당 이슈 번호로 "직접" 단일 조회 (단일 조희는 인덱싱과 상관없이 즉시 반영됨)
+                    single_issue_url = f"{GITHUB_API_URL}/{num}"
+                    resp = await client.get(single_issue_url, headers={
+                        "Authorization": f"token {GITHUB_TOKEN}",
+                        "Accept": "application/vnd.github.v3+json",
+                    })
+                    
+                    if resp.status_code == 200:
+                        target_issue = resp.json()
+                        # 이슈가 open 상태인 경우만 추가
+                        if target_issue.get("state") == "open":
+                            results.append({
+                                "id": num,
+                                "title": target_issue.get("title"),
+                                "content": target_issue.get("body"),
+                                "author_id": meta.pwd_hash
+                            })
+
+        return results
+    except Exception as exc:
+        print(f"❌ Error: {exc}")
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @app.patch("/update_issue/{issue_number}")
@@ -136,35 +178,28 @@ async def update_issue(
         return {"message": "글이 성공적으로 수정되었습니다."}
     else:
         raise HTTPException(status_code=response.status_code, detail="GitHub 반영 실패")
-    
+
 @app.post("/delete_issue/{issue_number}")
-async def delete_issue(
-    issue_number: int, 
-    req: DeleteRequest, 
-    db: Session = Depends(get_session)
-):
+async def delete_issue(issue_number: int, req: DeleteRequest, db: Session = Depends(get_session)):
+    statement = select(PostMetadata).where(PostMetadata.issue_number == issue_number)
+    metadata = db.exec(statement).first()
     """
     DB에 저장된 pwd_hash와 유저가 입력한 비밀번호를 비교하여 
     일치할 경우에만 GitHub 이슈를 닫습니다.
     """
-    
-    # 1. DB에서 해당 이슈 번호의 메타데이터 조회
-    statement = select(PostMetadata).where(PostMetadata.issue_number == issue_number)
-    metadata = db.exec(statement).first()
-
     if not metadata:
-        raise HTTPException(status_code=404, detail="삭제할 기록을 DB에서 찾을 수 없습니다.")
+        raise HTTPException(status_code=404, detail="삭제할 기록을 찾을 수 없습니다.")
 
-    # 2. 유저가 보낸 비밀번호 해싱 (작성 시와 동일한 로직)
     input_pwd_hash = hashlib.sha256(req.password.encode()).hexdigest()[:8]
-    
-    # 3. 비밀번호 대조
     if metadata.pwd_hash != input_pwd_hash:
-        # JD 포인트: 보안상 403 Forbidden 에러 반환
-        raise HTTPException(status_code=403, detail="비밀번호가 일치하지 않습니다. 🤫")
+        raise HTTPException(status_code=403, detail="비밀번호가 일치하지 않습니다.")
 
-    # 4. 검증 성공 시 GitHub Client를 통해 이슈 닫기 (state="closed")
-    # 기존에 작성하신 update_github_issue 함수를 재사용합니다.
+    # [중요] GitHub 반영 전에 우리 DB 상태를 먼저 변경 (즉시 반영을 위해)
+    metadata.is_deleted = True
+    db.add(metadata)
+    db.commit()
+
+    # GitHub 이슈 닫기
     response = await update_github_issue(issue_number, {"state": "closed"})
 
     if response.status_code in (200, 201):

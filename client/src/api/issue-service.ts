@@ -20,13 +20,12 @@ export const createPost = async (post: PostRecord) => {
  * 게시글 목록 읽기
  */
 export const getPosts = async (): Promise<PostRecord[]> => {
-  // Request the backend server which returns simplified post objects
   const response = await axios.get(`${API_BASE_URL}/posts`);
-
   return response.data.map((issue: any) => ({
     id: issue.id,
     title: issue.title,
     content: issue.content,
+    authorId: issue.author_id,
   }));
 };
 
