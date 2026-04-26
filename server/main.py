@@ -15,13 +15,13 @@ import httpx
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # [1] Startup: 서버가 켜질 때 실행될 로직
-    print("🚀 비밀 세탁소 서버가 가동됩니다. DB를 초기화합니다.")
+    print("MUYAHO 서버가 가동됩니다. DB를 초기화합니다.")
     init_db()
     
     yield  # 서버가 실행되는 동안 여기서 대기합니다.
 
     # [2] Shutdown: 서버가 꺼질 때 실행될 로직 (필요 시)
-    print("💤 서버를 안전하게 종료합니다. 리소스를 정리합니다.")
+    print("서버를 종료합니다. 리소스를 정리합니다.")
 
 # lifespan을 FastAPI 인스턴스 생성 시 등록합니다.
 app = FastAPI(lifespan=lifespan)

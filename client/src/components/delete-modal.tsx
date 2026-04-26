@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { getRandomMessage, SIN_MESSAGES } from "../constants/messages";
+import { getRandomMessage, APP_MESSAGES } from "../constants/messages";
 
 interface DeleteModalProps {
   isDeleting: boolean;
@@ -14,7 +14,7 @@ export function DeleteModal({ isDeleting, onConfirm, onCancel }: DeleteModalProp
     if (!password) return;
     try {
       await onConfirm(password);
-      alert(getRandomMessage(SIN_MESSAGES.DELETE_SUCCESS));
+      alert(getRandomMessage(APP_MESSAGES.DELETE_SUCCESS));
       setPassword("");
     } catch (err: any) {
       alert(

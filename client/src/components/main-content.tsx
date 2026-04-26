@@ -39,7 +39,7 @@ export function MainContent() {
       {/* Header */}
       <header className="sticky top-0 flex items-center justify-center mb-12 py-4 bg-[#121212]">
         <h1 className="text-xl font-bold text-[#39ff14]">
-          MUYAHO
+          n_n
         </h1>
       </header>
 

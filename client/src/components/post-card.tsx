@@ -8,7 +8,7 @@ interface PostCardProps {
 
 export function PostCard({ post, isRemoving, onDelete }: PostCardProps) {
   return (
-    <div className="bg-[#1f1f1f] rounded-[48px] border border-white/5 p-8 flex flex-col gap-6 transition-all hover:border-white/10 shadow-lg">
+    <div className="border-t border-white/10 py-8 flex flex-col gap-6 transition-all">
       <div className="flex flex-col gap-4">
         <h3 className="text-lg text-[#e2e2e2] font-medium">{post.title}</h3>
         <p className="text-[#badab0] leading-relaxed whitespace-pre-wrap text-base">
@@ -16,10 +16,10 @@ export function PostCard({ post, isRemoving, onDelete }: PostCardProps) {
         </p>
       </div>
 
-      <div className="border-t border-white/10 pt-4 flex justify-between items-center">
+      <div className="flex justify-between items-center">
         <div className="flex items-center gap-4">
           <span className="bg-black/40 border border-white/5 text-[#c6c6c7] px-3 py-1.5 rounded-full text-xs font-mono">
-            ID: 익명_{post.authorId || post.id}
+            no_name_{post.authorId || post.id}
           </span>
         </div>
         <button

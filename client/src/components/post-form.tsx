@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { getRandomMessage, SIN_MESSAGES } from "../constants/messages";
+import { getRandomMessage, APP_MESSAGES } from "../constants/messages";
 import type { PostRecord } from "../types";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -42,10 +41,10 @@ export function PostForm({ isAdding, onSubmit }: PostFormProps) {
   const handleFormSubmit = async (data: PostFormData) => {
     try {
       await onSubmit(data); // 부모로부터 받은 addPost 실행
-      alert(getRandomMessage(SIN_MESSAGES.CREATE));
+      alert(getRandomMessage(APP_MESSAGES.CREATE));
       reset(); // 폼 초기화
     } catch (err) {
-      alert("대나무숲에 외치기가 실패했습니다. 🍃");
+      alert("대나무숲에 외치기가 실패했습니다.");
     }
   };
 
