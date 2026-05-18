@@ -1,6 +1,6 @@
-# 🌲 Anonymous Wood - Server Side Work Summary
+# 🌲 n_n - Server Side Work Summary
 
-이 문서는 GitHub Issues와 SQLite를 결합한 하이브리드 익명 게시판 시스템인 **Anonymous Wood**의 백엔드 구현 사항을 정리합니다.
+이 문서는 GitHub Issues와 SQLite를 결합한 하이브리드 익명 게시판 시스템인 **n_n**의 백엔드 구현 사항을 정리합니다.
 
 ## 1. 개요 (Overview)
 - **목적**: 사내 구성원을 위한 철저한 익명 게시판 서비스 구축

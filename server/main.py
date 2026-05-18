@@ -15,7 +15,7 @@ import httpx
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # [1] Startup: 서버가 켜질 때 실행될 로직
-    print("MUYAHO 서버가 가동됩니다. DB를 초기화합니다.")
+    print("n_n 서버가 가동됩니다. DB를 초기화합니다.")
     init_db()
     
     yield  # 서버가 실행되는 동안 여기서 대기합니다.
@@ -102,7 +102,7 @@ async def list_posts(db: Session = Depends(get_session)):
 
         results = []
         
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(follow_redirects=True) as client:
             for meta in recent_metas:
                 num = meta.issue_number
                 

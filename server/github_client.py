@@ -4,8 +4,8 @@ from config import GITHUB_API_URL, GITHUB_TOKEN, REPO_OWNER, REPO_NAME
 
 async def create_github_issue(title: str, body: str, labels: Optional[List[str]] = None) -> httpx.Response:
     """새로운 익명 게시글을 GitHub 이슈로 생성합니다."""
-    async with httpx.AsyncClient() as client:
-        return await client.post(
+    async with httpx.AsyncClient(follow_redirects=True) as client:
+        resp = await client.post(
             GITHUB_API_URL,
             headers={
                 "Authorization": f"token {GITHUB_TOKEN}",
@@ -17,10 +17,17 @@ async def create_github_issue(title: str, body: str, labels: Optional[List[str]]
                 "labels": labels or [],
             },
         )
+        if resp.status_code != 201:
+            try:
+                body = resp.json()
+            except Exception:
+                body = resp.text
+            print(f"[github_client.create_github_issue] status={resp.status_code}, body={body}")
+        return resp
 
 async def list_github_issues(labels: str = "anonymous-post", state: str = "open") -> List[Any]:
     """등록된 익명 게시글 목록을 불러옵니다."""
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(follow_redirects=True) as client:
         response = await client.get(
             GITHUB_API_URL, # config에 이미 URL이 있으므로 그대로 사용 가능
             params={"labels": labels, "state": state},
@@ -34,10 +41,10 @@ async def list_github_issues(labels: str = "anonymous-post", state: str = "open"
 
 async def update_github_issue(issue_number: int, payload: Dict[str, Any]) -> httpx.Response:
     """이슈의 제목, 본문, 상태 등을 범용적으로 수정합니다."""
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(follow_redirects=True) as client:
         # URL 구성 시 f-string 활용
         url = f"{GITHUB_API_URL}/{issue_number}"
-        return await client.patch(
+        resp = await client.patch(
             url,
             headers={
                 "Authorization": f"token {GITHUB_TOKEN}",
@@ -45,8 +52,22 @@ async def update_github_issue(issue_number: int, payload: Dict[str, Any]) -> htt
             },
             json=payload,
         )
+        if resp.status_code not in (200, 201):
+            try:
+                body = resp.json()
+            except Exception:
+                body = resp.text
+            print(f"[github_client.update_github_issue] status={resp.status_code}, body={body}")
+        return resp
 
 # [추가] 의미가 명확한 '은폐' 전용 함수
 async def close_github_issue(issue_number: int) -> httpx.Response:
     """특정 게시글을 은폐(이슈 닫기) 처리합니다."""
-    return await update_github_issue(issue_number, {"state": "closed"})
+    resp = await update_github_issue(issue_number, {"state": "closed"})
+    if resp.status_code not in (200, 201):
+        try:
+            body = resp.json()
+        except Exception:
+            body = resp.text
+        print(f"[github_client.close_github_issue] status={resp.status_code}, body={body}")
+    return resp
