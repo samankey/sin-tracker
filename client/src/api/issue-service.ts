@@ -21,12 +21,19 @@ export const createPost = async (post: PostRecord) => {
  */
 export const getPosts = async (): Promise<PostRecord[]> => {
   const response = await axios.get(`${API_BASE_URL}/posts`);
-  return response.data.map((issue: any) => ({
-    id: issue.id,
-    title: issue.title,
-    content: issue.content,
-    authorId: issue.author_id,
-  }));
+  return response.data.map(
+    (issue: {
+      id: number;
+      title: string;
+      content: string;
+      author_id: number;
+    }) => ({
+      id: issue.id,
+      title: issue.title,
+      content: issue.content,
+      authorId: issue.author_id,
+    }),
+  );
 };
 
 /**

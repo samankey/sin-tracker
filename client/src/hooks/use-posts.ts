@@ -1,12 +1,16 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { createPost, getPosts, deletePost } from "../api/issue-service";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { createPost, deletePost, getPosts } from "../api/issue-service";
 import type { PostRecord } from "../types";
 
 export function usePosts() {
   const queryClient = useQueryClient();
 
   // 데이터 가져오기
-  const { data: list = [], isLoading: isFetching, error } = useQuery({
+  const {
+    data: list = [],
+    isLoading: isFetching,
+    error,
+  } = useQuery({
     queryKey: ["posts"],
     queryFn: getPosts,
     // 유저가 다시 창을 봤을 때 신선한 데이터를 가져오도록 설정
@@ -36,10 +40,12 @@ export function usePosts() {
 
   // 삭제하기
   const removeMutation = useMutation({
-    mutationFn: ({ id, password }: { id: number; password: string }) => 
+    mutationFn: ({ id, password }: { id: number; password: string }) =>
       deletePost(id, password),
-    onSuccess: (_, { id }: { id: number, password: string }) => {
-      queryClient.setQueryData(['posts'], (old: PostRecord[]) => old.filter(post => post.id !==id));
+    onSuccess: (_, { id }: { id: number; password: string }) => {
+      queryClient.setQueryData(["posts"], (old: PostRecord[]) =>
+        old.filter((post) => post.id !== id),
+      );
       queryClient.invalidateQueries({ queryKey: ["posts"] });
     },
   });

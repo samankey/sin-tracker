@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { usePosts } from "../hooks/use-posts";
-import { PostForm } from "./post-form";
-import { PostCard } from "./post-card";
 import { DeleteModal } from "./delete-modal";
+import { PostCard } from "./post-card";
+import { PostForm } from "./post-form";
 
 export function MainContent() {
   const { list, isFetching, isAdding, isRemoving, error, addPost, removePost } =
@@ -38,9 +38,7 @@ export function MainContent() {
     <div className="min-h-screen bg-[#121212] text-white font-sans pb-32">
       {/* Header */}
       <header className="sticky top-0 flex items-center justify-center mb-12 py-4 bg-[#121212]">
-        <h1 className="text-xl font-bold text-[#39ff14]">
-          n_n
-        </h1>
+        <h1 className="text-xl font-bold text-[#39ff14]">n_n</h1>
       </header>
 
       <div className="max-w-3xl mx-auto px-6 flex flex-col gap-16">

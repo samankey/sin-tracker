@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { getRandomMessage, APP_MESSAGES } from "../constants/messages";
+import { APP_MESSAGES, getRandomMessage } from "../constants/messages";
 
 interface DeleteModalProps {
   isDeleting: boolean;
@@ -7,7 +7,11 @@ interface DeleteModalProps {
   onCancel: () => void;
 }
 
-export function DeleteModal({ isDeleting, onConfirm, onCancel }: DeleteModalProps) {
+export function DeleteModal({
+  isDeleting,
+  onConfirm,
+  onCancel,
+}: DeleteModalProps) {
   const [password, setPassword] = useState("");
 
   const handleConfirm = async () => {
@@ -16,10 +20,10 @@ export function DeleteModal({ isDeleting, onConfirm, onCancel }: DeleteModalProp
       await onConfirm(password);
       alert(getRandomMessage(APP_MESSAGES.DELETE_SUCCESS));
       setPassword("");
-    } catch (err: any) {
-      alert(
-        err.response?.data?.detail || "삭제에 실패했습니다. 비밀번호를 확인하세요.",
-      );
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { detail?: string } } })
+        ?.response?.data?.detail;
+      alert(detail || "삭제에 실패했습니다. 비밀번호를 확인하세요.");
     }
   };
 
@@ -37,17 +41,18 @@ export function DeleteModal({ isDeleting, onConfirm, onCancel }: DeleteModalProp
           placeholder="비밀번호 입력"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          autoFocus
         />
 
         <div className="flex gap-3">
           <button
+            type="button"
             className="flex-1 bg-white/5 hover:bg-white/10 text-white py-4 rounded-full font-bold transition-all"
             onClick={onCancel}
           >
             취소
           </button>
           <button
+            type="button"
             className="flex-1 bg-[#39ff14] text-black py-4 rounded-full font-bold hover:bg-[#32e011] transition-all disabled:opacity-50"
             onClick={handleConfirm}
             disabled={isDeleting || !password}
