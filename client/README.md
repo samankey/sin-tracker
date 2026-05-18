@@ -1,6 +1,6 @@
-# MUYAHO - Client
+# n_n - Client
 
-익명 게시판 서비스 **MUYAHO**의 프론트엔드 프로젝트입니다. GitHub Issues를 백엔드 저장소로 활용하며, 최신 웹 기술을 통해 견고하고 유지보수가 용이한 아키텍처를 지향합니다.
+익명 게시판 서비스 **n_n**의 프론트엔드 프로젝트입니다. GitHub Issues를 백엔드 저장소로 활용합니다.
 
 ## 🛠 Tech Stack
 

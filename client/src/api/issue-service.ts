@@ -30,7 +30,7 @@ export const getPosts = async (): Promise<PostRecord[]> => {
 };
 
 /**
- * 게시글 삭제 (은폐)
+ * 게시글 삭제
  */
 export const deletePost = async (issueNumber: number, password: string) => {
   const res = await axios.post(`${API_BASE_URL}/delete_issue/${issueNumber}`, {
